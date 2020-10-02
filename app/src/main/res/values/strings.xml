@@ -23,4 +23,9 @@
     <string name="crime_report_suspect">the suspect is %s.</string>
     <string name="crime_report_subject">CriminalIntent Crime Report</string>
     <string name="send_report">Send crime report via</string>
+    <string name="previous_images">Previous images</string>
+
+    <string name="photo_desc_2">Second crime photo</string>
+    <string name="photo_desc_3">Third crime photo</string>
+    <string name="photo_desc_4">Fourth crime photo</string>
 </resources>

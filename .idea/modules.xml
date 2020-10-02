@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/16_CameraIntent.iml" filepath="$PROJECT_DIR$/.idea/16_CameraIntent.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/app.iml" group="cs-528-project-2/app" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/cs-528-project-2.iml" filepath="$PROJECT_DIR$/.idea/modules/cs-528-project-2.iml" group="cs-528-project-2" />
     </modules>
   </component>
 </project>

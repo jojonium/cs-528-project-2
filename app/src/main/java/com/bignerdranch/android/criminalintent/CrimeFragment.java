@@ -53,7 +53,6 @@ public class CrimeFragment extends Fragment {
 
     //private File mPhotoFile;
     private int maxPhotoFiles = 4;
-    private int photoNum = 0;
     private ArrayList<File> mPhotoFiles = new ArrayList<File>(maxPhotoFiles);
     //private ImageView mPhotoView;
     private ArrayList<ImageView> mPhotoViews = new ArrayList<ImageView>(maxPhotoFiles);
@@ -174,7 +173,7 @@ public class CrimeFragment extends Fragment {
 
         if (canTakePhoto) {
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(photoNum));
+            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(mCrime.getPhotoNum()));
             captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         }
 
@@ -236,10 +235,10 @@ public class CrimeFragment extends Fragment {
             }
         } else if (requestCode == REQUEST_PHOTO) {
             // TODO update database
-            photoNum = (photoNum + 1) % maxPhotoFiles;
+            mCrime.setPhotoNum((mCrime.getPhotoNum() + 1) % maxPhotoFiles);
             this.captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(photoNum));
+            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(mCrime.getPhotoNum()));
             captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
             UUID uuid_fk = mCrime.getId();
             updatePhotoView(uuid_fk);

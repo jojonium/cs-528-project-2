@@ -16,6 +16,7 @@ import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +29,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
 
@@ -42,14 +44,21 @@ public class CrimeFragment extends Fragment {
     private static final int REQUEST_PHOTO= 2;
 
     private Crime mCrime;
-    private File mPhotoFile;
     private EditText mTitleField;
     private Button mDateButton;
     private CheckBox mSolvedCheckbox;
     private Button mReportButton;
     private Button mSuspectButton;
     private ImageButton mPhotoButton;
-    private ImageView mPhotoView;
+
+    //private File mPhotoFile;
+    private int maxPhotoFiles = 4;
+    private int photoNum = 0;
+    private ArrayList<File> mPhotoFiles = new ArrayList<File>(maxPhotoFiles);
+    //private ImageView mPhotoView;
+    private ArrayList<ImageView> mPhotoViews = new ArrayList<ImageView>(maxPhotoFiles);
+
+    final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
     public static CrimeFragment newInstance(UUID crimeId) {
         Bundle args = new Bundle();
@@ -65,7 +74,9 @@ public class CrimeFragment extends Fragment {
         super.onCreate(savedInstanceState);
         UUID crimeId = (UUID) getArguments().getSerializable(ARG_CRIME_ID);
         mCrime = CrimeLab.get(getActivity()).getCrime(crimeId);
-        mPhotoFile = CrimeLab.get(getActivity()).getPhotoFile(mCrime);
+        for (int i = 0; i < this.maxPhotoFiles; ++i) {
+            this.mPhotoFiles.add(CrimeLab.get(getActivity()).getPhotoFile(mCrime, i));
+        }
     }
 
     @Override
@@ -156,15 +167,14 @@ public class CrimeFragment extends Fragment {
         }
 
         mPhotoButton = (ImageButton) v.findViewById(R.id.crime_camera);
-        final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-        boolean canTakePhoto = mPhotoFile != null &&
+        boolean canTakePhoto = !mPhotoFiles.contains(null) &&
                 captureImage.resolveActivity(packageManager) != null;
         mPhotoButton.setEnabled(canTakePhoto);
 
         if (canTakePhoto) {
-            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFile);
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(photoNum));
             captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         }
 
@@ -175,7 +185,10 @@ public class CrimeFragment extends Fragment {
             }
         });
 
-        mPhotoView = (ImageView) v.findViewById(R.id.crime_photo);
+        mPhotoViews.add((ImageView) v.findViewById(R.id.crime_photo_0));
+        mPhotoViews.add((ImageView) v.findViewById(R.id.crime_photo_1));
+        mPhotoViews.add((ImageView) v.findViewById(R.id.crime_photo_2));
+        mPhotoViews.add((ImageView) v.findViewById(R.id.crime_photo_3));
         updatePhotoView(mCrime.getId());
 
         return v;
@@ -222,6 +235,11 @@ public class CrimeFragment extends Fragment {
                 c.close();
             }
         } else if (requestCode == REQUEST_PHOTO) {
+            // TODO update database
+            photoNum = (photoNum + 1) % maxPhotoFiles;
+            captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(photoNum));
+            captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
             UUID uuid_fk = mCrime.getId();
             updatePhotoView(uuid_fk);
         }
@@ -252,12 +270,13 @@ public class CrimeFragment extends Fragment {
     }
 
     private void updatePhotoView(UUID uuid_fk) {
-        if (mPhotoFile == null || !mPhotoFile.exists()) {
-            mPhotoView.setImageDrawable(null);
-        } else {
-            Bitmap bitmap = PictureUtils.getScaledBitmap(
-                    mPhotoFile.getPath(), getActivity());
-            mPhotoView.setImageBitmap(bitmap);
+        for (int i = 0; i < maxPhotoFiles; ++i) {
+            if (mPhotoFiles.get(i) == null || !mPhotoFiles.get(i).exists()) {
+                mPhotoViews.get(i).setImageDrawable(null);
+            } else {
+                Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(i).getPath(), getActivity());
+                mPhotoViews.get(i).setImageBitmap(bitmap);
+            }
         }
     }
 }

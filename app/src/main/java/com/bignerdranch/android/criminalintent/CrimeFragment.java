@@ -58,7 +58,7 @@ public class CrimeFragment extends Fragment {
     //private ImageView mPhotoView;
     private ArrayList<ImageView> mPhotoViews = new ArrayList<ImageView>(maxPhotoFiles);
 
-    final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+    Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
     public static CrimeFragment newInstance(UUID crimeId) {
         Bundle args = new Bundle();
@@ -237,6 +237,7 @@ public class CrimeFragment extends Fragment {
         } else if (requestCode == REQUEST_PHOTO) {
             // TODO update database
             photoNum = (photoNum + 1) % maxPhotoFiles;
+            this.captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Uri uri = FileProvider.getUriForFile(getActivity(), AUTHORITY, mPhotoFiles.get(photoNum));
             captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);

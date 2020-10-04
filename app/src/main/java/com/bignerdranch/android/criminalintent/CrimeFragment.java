@@ -31,6 +31,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bignerdranch.android.criminalintent.ui.camera.GraphicOverlay;
+import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.MultiProcessor;
 import com.google.android.gms.vision.Tracker;
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
 import com.google.android.gms.vision.face.FaceDetector;
+import com.google.android.gms.vision.face.Landmark;
 
 public class CrimeFragment extends Fragment {
 
@@ -56,6 +58,7 @@ public class CrimeFragment extends Fragment {
     private EditText mTitleField;
     private Button mDateButton;
     private CheckBox mSolvedCheckbox;
+    private CheckBox mFaceCheckbox;
     private Button mReportButton;
     private Button mSuspectButton;
     private ImageButton mPhotoButton;
@@ -88,10 +91,18 @@ public class CrimeFragment extends Fragment {
         for (int i = 0; i < this.maxPhotoFiles; ++i) {
             this.mPhotoFiles.add(CrimeLab.get(getActivity()).getPhotoFile(mCrime, i));
         }
-        this.mFaceDetector = new FaceDetector.Builder(this.getActivity())
+        this.mFaceDetector = new FaceDetector.Builder(this.getActivity().getApplicationContext())
                 .setTrackingEnabled(false)
                 .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                 .build();
+        this.mFaceDetector.setProcessor(
+                new MultiProcessor.Builder<Face>(new GraphicFaceTrackerFactory()).build());
+    }
+
+    @Override
+    public void onDestroy() {
+        this.mFaceDetector.release();
+        super.onDestroy();
     }
 
     @Override
@@ -159,6 +170,15 @@ public class CrimeFragment extends Fragment {
                 i = Intent.createChooser(i, getString(R.string.send_report));
 
                 startActivity(i);
+            }
+        });
+
+        mFaceCheckbox = v.findViewById(R.id.face_detection_checkbox);
+        mFaceCheckbox.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (!mFaceCheckbox.isChecked()) {
+                    ((TextView) getView().findViewById(R.id.faces_detected)).setText("");
+                }
             }
         });
 
@@ -251,14 +271,12 @@ public class CrimeFragment extends Fragment {
             }
         } else if (requestCode == REQUEST_PHOTO) {
             // perform face detection if enabled
-            if (((CheckBox) this.getView().findViewById(R.id.face_detection_checkbox)).isChecked()) {
+            if (mFaceCheckbox.isChecked()) {
                 Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(mCrime.getPhotoNum()).getPath(), getActivity());
                 Frame frame = new Frame.Builder().setBitmap(bitmap).build();
                 SparseArray<Face> faces = this.mFaceDetector.detect(frame);
-                ((TextView) this.getView().findViewById(R.id.faces_detected)).setText(getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size()));
-                for (int i = 0; i < faces.size(); ++i) {
-                    Face face = faces.valueAt(i);
-                }
+                String facesDetectedText = getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size());
+                ((TextView) this.getView().findViewById(R.id.faces_detected)).setText(facesDetectedText);
             }
             mCrime.setPhotoNum((mCrime.getPhotoNum() + 1) % maxPhotoFiles);
             this.captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);

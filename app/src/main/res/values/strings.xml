@@ -28,4 +28,11 @@
     <string name="photo_desc_2">Second crime photo</string>
     <string name="photo_desc_3">Third crime photo</string>
     <string name="photo_desc_4">Fourth crime photo</string>
+
+    <string name="face_detection_checkbox">Enable Face Detection</string>
+
+    <plurals name="faces">
+        <item quantity="one">%d Face Detected</item>
+        <item quantity="other">%d Faces Detected</item>
+    </plurals>
 </resources>

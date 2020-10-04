@@ -51,7 +51,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:gravity="center_horizontal"
         android:orientation="horizontal">
@@ -61,28 +61,60 @@
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_margin="20dp"
+            android:contentDescription="@string/photo_desc_2"
             android:cropToPadding="true"
-            android:scaleType="centerInside"
-            android:contentDescription="@string/photo_desc_2"/>
+            android:scaleType="centerInside" />
 
         <ImageView
             android:id="@+id/crime_photo_2"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_margin="20dp"
+            android:contentDescription="@string/photo_desc_3"
             android:cropToPadding="true"
-            android:scaleType="centerInside"
-            android:contentDescription="@string/photo_desc_3"/>
+            android:scaleType="centerInside" />
 
         <ImageView
             android:id="@+id/crime_photo_3"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_margin="20dp"
+            android:contentDescription="@string/photo_desc_4"
             android:cropToPadding="true"
-            android:scaleType="centerInside"
-            android:contentDescription="@string/photo_desc_4" />
+            android:scaleType="centerInside" />
     </LinearLayout>
 
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <CheckBox
+                android:id="@+id/face_detection_checkbox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/face_detection_checkbox" />
+
+            <TextView
+                android:id="@+id/faces_detected"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </TableLayout>
+
+    <com.bignerdranch.android.criminalintent.ui.camera.GraphicOverlay
+        android:id="@+id/faceOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </LinearLayout>

@@ -17,6 +17,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,11 +28,19 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.bignerdranch.android.criminalintent.ui.camera.GraphicOverlay;
+import com.google.android.gms.vision.Frame;
+import com.google.android.gms.vision.MultiProcessor;
+import com.google.android.gms.vision.Tracker;
+import com.google.android.gms.vision.face.Face;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
+import com.google.android.gms.vision.face.FaceDetector;
 
 public class CrimeFragment extends Fragment {
 
@@ -50,6 +59,9 @@ public class CrimeFragment extends Fragment {
     private Button mReportButton;
     private Button mSuspectButton;
     private ImageButton mPhotoButton;
+
+    private GraphicOverlay mGraphicOverlay;
+    private FaceDetector mFaceDetector;
 
     //private File mPhotoFile;
     private int maxPhotoFiles = 4;
@@ -76,6 +88,10 @@ public class CrimeFragment extends Fragment {
         for (int i = 0; i < this.maxPhotoFiles; ++i) {
             this.mPhotoFiles.add(CrimeLab.get(getActivity()).getPhotoFile(mCrime, i));
         }
+        this.mFaceDetector = new FaceDetector.Builder(this.getActivity())
+                .setTrackingEnabled(false)
+                .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                .build();
     }
 
     @Override
@@ -234,7 +250,16 @@ public class CrimeFragment extends Fragment {
                 c.close();
             }
         } else if (requestCode == REQUEST_PHOTO) {
-            // TODO update database
+            // perform face detection if enabled
+            if (((CheckBox) this.getView().findViewById(R.id.face_detection_checkbox)).isChecked()) {
+                Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(mCrime.getPhotoNum()).getPath(), getActivity());
+                Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                SparseArray<Face> faces = this.mFaceDetector.detect(frame);
+                ((TextView) this.getView().findViewById(R.id.faces_detected)).setText(getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size()));
+                for (int i = 0; i < faces.size(); ++i) {
+                    Face face = faces.valueAt(i);
+                }
+            }
             mCrime.setPhotoNum((mCrime.getPhotoNum() + 1) % maxPhotoFiles);
             this.captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -277,6 +302,71 @@ public class CrimeFragment extends Fragment {
                 Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(i).getPath(), getActivity());
                 mPhotoViews.get(i).setImageBitmap(bitmap);
             }
+        }
+    }
+
+    //==============================================================================================
+    // Graphic Face Tracker
+    //==============================================================================================
+
+    /**
+     * Factory for creating a face tracker to be associated with a new face.  The multiprocessor
+     * uses this factory to create face trackers as needed -- one for each individual.
+     */
+    private class GraphicFaceTrackerFactory implements MultiProcessor.Factory<Face> {
+        @Override
+        public Tracker<Face> create(Face face) {
+            return new GraphicFaceTracker(mGraphicOverlay);
+        }
+    }
+
+    /**
+     * Face tracker for each detected individual. This maintains a face graphic within the app's
+     * associated face overlay.
+     */
+    private class GraphicFaceTracker extends Tracker<Face> {
+        private GraphicOverlay mOverlay;
+        private FaceGraphic mFaceGraphic;
+
+        GraphicFaceTracker(GraphicOverlay overlay) {
+            mOverlay = overlay;
+            mFaceGraphic = new FaceGraphic(overlay);
+        }
+
+        /**
+         * Start tracking the detected face instance within the face overlay.
+         */
+        @Override
+        public void onNewItem(int faceId, Face item) {
+            mFaceGraphic.setId(faceId);
+        }
+
+        /**
+         * Update the position/characteristics of the face within the overlay.
+         */
+        @Override
+        public void onUpdate(FaceDetector.Detections<Face> detectionResults, Face face) {
+            mOverlay.add(mFaceGraphic);
+            mFaceGraphic.updateFace(face);
+        }
+
+        /**
+         * Hide the graphic when the corresponding face was not detected.  This can happen for
+         * intermediate frames temporarily (e.g., if the face was momentarily blocked from
+         * view).
+         */
+        @Override
+        public void onMissing(FaceDetector.Detections<Face> detectionResults) {
+            mOverlay.remove(mFaceGraphic);
+        }
+
+        /**
+         * Called when the face is assumed to be gone for good. Remove the graphic annotation from
+         * the overlay.
+         */
+        @Override
+        public void onDone() {
+            mOverlay.remove(mFaceGraphic);
         }
     }
 }

@@ -103,7 +103,8 @@ public class CrimeLab {
         values.put(CrimeTable.Cols.SOLVED, crime.isSolved() ? 1 : 0);
         values.put(CrimeTable.Cols.SUSPECT, crime.getSuspect());
         values.put(CrimeTable.Cols.PHOTO_NUM, crime.getPhotoNum());
-
+        values.put(CrimeTable.Cols.FACE_CHECKED, crime.isFaceChecked() ? 1 : 0);
+        values.put(CrimeTable.Cols.OCR_CHECKED, crime.isOcrChecked() ? 1 : 0);
 
         return values;
     }

@@ -182,6 +182,7 @@ public class CrimeFragment extends Fragment {
         mFaceCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mCrime.setFaceChecked(isChecked);
                 if (isChecked) {
                     int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
                     if (mPhotoFiles.get(photoNum) == null || !mPhotoFiles.get(photoNum).exists())
@@ -195,7 +196,6 @@ public class CrimeFragment extends Fragment {
                     ((TextView) getView().findViewById(R.id.faces_detected)).setText("");
                 }
                 updatePhotoView(mCrime.getId());
-                mCrime.setFaceChecked(isChecked);
             }
         });
 
@@ -205,16 +205,20 @@ public class CrimeFragment extends Fragment {
             mCrime.setOcrChecked(false);
         } else {
             mOCRCheckbox.setChecked(mCrime.isOcrChecked());
+        }
 
+        int lastPhoto = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
+        if (mPhotoFiles.get(lastPhoto) != null && mPhotoFiles.get(lastPhoto).exists()) {
+            setDetectedText(mOCRCheckbox.isChecked(), lastPhoto);
         }
 
         mOCRCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mCrime.setOcrChecked(isChecked);
                 int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
                 setDetectedText(isChecked, photoNum);
                 updatePhotoView(mCrime.getId());
-                mCrime.setOcrChecked(isChecked);
             }
         });
 
@@ -367,7 +371,6 @@ public class CrimeFragment extends Fragment {
     }
 
     private void updatePhotoView(UUID uuid_fk) {
-        int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
         for (int i = 0; i < maxPhotoFiles; ++i) {
             if (mPhotoFiles.get(i) == null || !mPhotoFiles.get(i).exists()) {
                 mPhotoViews.get(i).setImageDrawable(null);
@@ -395,9 +398,6 @@ public class CrimeFragment extends Fragment {
                 } else {
                     mPhotoViews.get(i).setImageBitmap(bitmap);
                 }
-//                if (i == photoNum) {
-//                    setDetectedText(mOCRCheckbox.isChecked(), photoNum);
-//                }
             }
         }
     }

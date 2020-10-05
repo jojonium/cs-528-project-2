@@ -6,6 +6,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
@@ -16,7 +20,7 @@ import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
-import android.util.Log;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +31,11 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.google.android.gms.vision.Frame;
+import com.google.android.gms.vision.face.Face;
+import com.google.android.gms.vision.face.FaceDetector;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -41,15 +50,18 @@ public class CrimeFragment extends Fragment {
 
     private static final int REQUEST_DATE = 0;
     private static final int REQUEST_CONTACT = 1;
-    private static final int REQUEST_PHOTO= 2;
+    private static final int REQUEST_PHOTO = 2;
 
     private Crime mCrime;
     private EditText mTitleField;
     private Button mDateButton;
     private CheckBox mSolvedCheckbox;
+    private CheckBox mFaceCheckbox;
     private Button mReportButton;
     private Button mSuspectButton;
     private ImageButton mPhotoButton;
+
+    private FaceDetector mFaceDetector;
 
     //private File mPhotoFile;
     private int maxPhotoFiles = 4;
@@ -76,6 +88,16 @@ public class CrimeFragment extends Fragment {
         for (int i = 0; i < this.maxPhotoFiles; ++i) {
             this.mPhotoFiles.add(CrimeLab.get(getActivity()).getPhotoFile(mCrime, i));
         }
+        this.mFaceDetector = new FaceDetector.Builder(this.getActivity().getApplicationContext())
+                .setTrackingEnabled(false)
+                .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                .build();
+    }
+
+    @Override
+    public void onDestroy() {
+        this.mFaceDetector.release();
+        super.onDestroy();
     }
 
     @Override
@@ -132,7 +154,7 @@ public class CrimeFragment extends Fragment {
             }
         });
 
-        mReportButton = (Button)v.findViewById(R.id.crime_report);
+        mReportButton = (Button) v.findViewById(R.id.crime_report);
         mReportButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Intent i = new Intent(Intent.ACTION_SEND);
@@ -146,9 +168,29 @@ public class CrimeFragment extends Fragment {
             }
         });
 
+        mFaceCheckbox = v.findViewById(R.id.face_detection_checkbox);
+        mFaceCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
+                    if (mPhotoFiles.get(photoNum) == null || !mPhotoFiles.get(photoNum).exists())
+                        return;
+                    Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(photoNum).getPath(), getActivity());
+                    Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                    SparseArray<Face> faces = mFaceDetector.detect(frame);
+                    String facesDetectedText = getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size());
+                    ((TextView) getView().findViewById(R.id.faces_detected)).setText(facesDetectedText);
+                } else {
+                    ((TextView) getView().findViewById(R.id.faces_detected)).setText("");
+                }
+                updatePhotoView(mCrime.getId());
+            }
+        });
+
         final Intent pickContact = new Intent(Intent.ACTION_PICK,
                 ContactsContract.Contacts.CONTENT_URI);
-        mSuspectButton = (Button)v.findViewById(R.id.crime_suspect);
+        mSuspectButton = (Button) v.findViewById(R.id.crime_suspect);
         mSuspectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 startActivityForResult(pickContact, REQUEST_CONTACT);
@@ -208,7 +250,7 @@ public class CrimeFragment extends Fragment {
             Uri contactUri = data.getData();
             // Specify which fields you want your query to return
             // values for.
-            String[] queryFields = new String[] {
+            String[] queryFields = new String[]{
                     ContactsContract.Contacts.DISPLAY_NAME,
             };
             // Perform your query - the contactUri is like a "where"
@@ -234,7 +276,14 @@ public class CrimeFragment extends Fragment {
                 c.close();
             }
         } else if (requestCode == REQUEST_PHOTO) {
-            // TODO update database
+            // perform face detection if enabled
+            if (mFaceCheckbox.isChecked()) {
+                Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(mCrime.getPhotoNum()).getPath(), getActivity());
+                Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                SparseArray<Face> faces = this.mFaceDetector.detect(frame);
+                String facesDetectedText = getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size());
+                ((TextView) this.getView().findViewById(R.id.faces_detected)).setText(facesDetectedText);
+            }
             mCrime.setPhotoNum((mCrime.getPhotoNum() + 1) % maxPhotoFiles);
             this.captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -275,7 +324,28 @@ public class CrimeFragment extends Fragment {
                 mPhotoViews.get(i).setImageDrawable(null);
             } else {
                 Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(i).getPath(), getActivity());
-                mPhotoViews.get(i).setImageBitmap(bitmap);
+                if (mFaceCheckbox.isChecked()) {
+                    Bitmap destinationBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                    Canvas canvas = new Canvas(destinationBitmap);
+                    Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                    Paint paint = new Paint();
+                    paint.setStrokeWidth(15);
+                    paint.setColor(Color.GRAY);
+                    paint.setStyle(Paint.Style.STROKE);
+                    canvas.drawBitmap(bitmap, 0, 0, null);
+                    SparseArray<Face> faces = mFaceDetector.detect(frame);
+                    for (int f = 0; f < faces.size(); ++f) {
+                        Face face = faces.valueAt(f);
+                        float x1 = face.getPosition().x;
+                        float y1 = face.getPosition().y;
+                        float x2 = x1 + face.getWidth();
+                        float y2 = y1 + face.getHeight();
+                        canvas.drawRect(new RectF(x1, y1, x2, y2), paint);
+                    }
+                    mPhotoViews.get(i).setImageBitmap(destinationBitmap);
+                } else {
+                    mPhotoViews.get(i).setImageBitmap(bitmap);
+                }
             }
         }
     }

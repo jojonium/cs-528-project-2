@@ -128,11 +128,5 @@
 
         </TableLayout>
 
-        <com.bignerdranch.android.criminalintent.ui.camera.GraphicOverlay
-            android:id="@+id/faceOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
     </LinearLayout>
-
 </ScrollView>

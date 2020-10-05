@@ -6,6 +6,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
@@ -16,7 +21,6 @@ import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,18 +35,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bignerdranch.android.criminalintent.ui.camera.GraphicOverlay;
-import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.Frame;
-import com.google.android.gms.vision.MultiProcessor;
-import com.google.android.gms.vision.Tracker;
 import com.google.android.gms.vision.face.Face;
+import com.google.android.gms.vision.face.FaceDetector;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
-import com.google.android.gms.vision.face.FaceDetector;
-import com.google.android.gms.vision.face.Landmark;
 
 public class CrimeFragment extends Fragment {
 
@@ -52,7 +52,7 @@ public class CrimeFragment extends Fragment {
 
     private static final int REQUEST_DATE = 0;
     private static final int REQUEST_CONTACT = 1;
-    private static final int REQUEST_PHOTO= 2;
+    private static final int REQUEST_PHOTO = 2;
 
     private Crime mCrime;
     private EditText mTitleField;
@@ -95,8 +95,6 @@ public class CrimeFragment extends Fragment {
                 .setTrackingEnabled(false)
                 .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                 .build();
-        this.mFaceDetector.setProcessor(
-                new MultiProcessor.Builder<Face>(new GraphicFaceTrackerFactory()).build());
     }
 
     @Override
@@ -159,7 +157,7 @@ public class CrimeFragment extends Fragment {
             }
         });
 
-        mReportButton = (Button)v.findViewById(R.id.crime_report);
+        mReportButton = (Button) v.findViewById(R.id.crime_report);
         mReportButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Intent i = new Intent(Intent.ACTION_SEND);
@@ -179,7 +177,8 @@ public class CrimeFragment extends Fragment {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
-                    if (mPhotoFiles.get(photoNum) == null || !mPhotoFiles.get(photoNum).exists()) return;
+                    if (mPhotoFiles.get(photoNum) == null || !mPhotoFiles.get(photoNum).exists())
+                        return;
                     Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(photoNum).getPath(), getActivity());
                     Frame frame = new Frame.Builder().setBitmap(bitmap).build();
                     SparseArray<Face> faces = mFaceDetector.detect(frame);
@@ -188,12 +187,13 @@ public class CrimeFragment extends Fragment {
                 } else {
                     ((TextView) getView().findViewById(R.id.faces_detected)).setText("");
                 }
+                updatePhotoView(mCrime.getId());
             }
         });
 
         final Intent pickContact = new Intent(Intent.ACTION_PICK,
                 ContactsContract.Contacts.CONTENT_URI);
-        mSuspectButton = (Button)v.findViewById(R.id.crime_suspect);
+        mSuspectButton = (Button) v.findViewById(R.id.crime_suspect);
         mSuspectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 startActivityForResult(pickContact, REQUEST_CONTACT);
@@ -253,7 +253,7 @@ public class CrimeFragment extends Fragment {
             Uri contactUri = data.getData();
             // Specify which fields you want your query to return
             // values for.
-            String[] queryFields = new String[] {
+            String[] queryFields = new String[]{
                     ContactsContract.Contacts.DISPLAY_NAME,
             };
             // Perform your query - the contactUri is like a "where"
@@ -327,73 +327,29 @@ public class CrimeFragment extends Fragment {
                 mPhotoViews.get(i).setImageDrawable(null);
             } else {
                 Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(i).getPath(), getActivity());
-                mPhotoViews.get(i).setImageBitmap(bitmap);
+                if (mFaceCheckbox.isChecked()) {
+                    Bitmap destinationBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                    Canvas canvas = new Canvas(destinationBitmap);
+                    Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                    Paint paint = new Paint();
+                    paint.setStrokeWidth(15);
+                    paint.setColor(Color.GRAY);
+                    paint.setStyle(Paint.Style.STROKE);
+                    canvas.drawBitmap(bitmap, 0, 0, null);
+                    SparseArray<Face> faces = mFaceDetector.detect(frame);
+                    for (int f = 0; f < faces.size(); ++f) {
+                        Face face = faces.valueAt(f);
+                        float x1 = face.getPosition().x;
+                        float y1 = face.getPosition().y;
+                        float x2 = x1 + face.getWidth();
+                        float y2 = y1 + face.getHeight();
+                        canvas.drawRect(new RectF(x1, y1, x2, y2), paint);
+                    }
+                    mPhotoViews.get(i).setImageBitmap(destinationBitmap);
+                } else {
+                    mPhotoViews.get(i).setImageBitmap(bitmap);
+                }
             }
-        }
-    }
-
-    //==============================================================================================
-    // Graphic Face Tracker
-    //==============================================================================================
-
-    /**
-     * Factory for creating a face tracker to be associated with a new face.  The multiprocessor
-     * uses this factory to create face trackers as needed -- one for each individual.
-     */
-    private class GraphicFaceTrackerFactory implements MultiProcessor.Factory<Face> {
-        @Override
-        public Tracker<Face> create(Face face) {
-            return new GraphicFaceTracker(mGraphicOverlay);
-        }
-    }
-
-    /**
-     * Face tracker for each detected individual. This maintains a face graphic within the app's
-     * associated face overlay.
-     */
-    private class GraphicFaceTracker extends Tracker<Face> {
-        private GraphicOverlay mOverlay;
-        private FaceGraphic mFaceGraphic;
-
-        GraphicFaceTracker(GraphicOverlay overlay) {
-            mOverlay = overlay;
-            mFaceGraphic = new FaceGraphic(overlay);
-        }
-
-        /**
-         * Start tracking the detected face instance within the face overlay.
-         */
-        @Override
-        public void onNewItem(int faceId, Face item) {
-            mFaceGraphic.setId(faceId);
-        }
-
-        /**
-         * Update the position/characteristics of the face within the overlay.
-         */
-        @Override
-        public void onUpdate(FaceDetector.Detections<Face> detectionResults, Face face) {
-            mOverlay.add(mFaceGraphic);
-            mFaceGraphic.updateFace(face);
-        }
-
-        /**
-         * Hide the graphic when the corresponding face was not detected.  This can happen for
-         * intermediate frames temporarily (e.g., if the face was momentarily blocked from
-         * view).
-         */
-        @Override
-        public void onMissing(FaceDetector.Detections<Face> detectionResults) {
-            mOverlay.remove(mFaceGraphic);
-        }
-
-        /**
-         * Called when the face is assumed to be gone for good. Remove the graphic annotation from
-         * the overlay.
-         */
-        @Override
-        public void onDone() {
-            mOverlay.remove(mFaceGraphic);
         }
     }
 }

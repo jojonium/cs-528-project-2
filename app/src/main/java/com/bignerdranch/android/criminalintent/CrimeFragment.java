@@ -174,9 +174,18 @@ public class CrimeFragment extends Fragment {
         });
 
         mFaceCheckbox = v.findViewById(R.id.face_detection_checkbox);
-        mFaceCheckbox.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                if (!mFaceCheckbox.isChecked()) {
+        mFaceCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
+                    if (mPhotoFiles.get(photoNum) == null || !mPhotoFiles.get(photoNum).exists()) return;
+                    Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(photoNum).getPath(), getActivity());
+                    Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                    SparseArray<Face> faces = mFaceDetector.detect(frame);
+                    String facesDetectedText = getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size());
+                    ((TextView) getView().findViewById(R.id.faces_detected)).setText(facesDetectedText);
+                } else {
                     ((TextView) getView().findViewById(R.id.faces_detected)).setText("");
                 }
             }

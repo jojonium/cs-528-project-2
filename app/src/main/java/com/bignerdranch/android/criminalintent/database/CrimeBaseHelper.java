@@ -8,7 +8,7 @@ import com.bignerdranch.android.criminalintent.database.CrimeDbSchema.CrimeTable
 
 public class CrimeBaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "CrimeBaseHelper";
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
     private static final String DATABASE_NAME = "crimeBase.db";
 
     public CrimeBaseHelper(Context context) {
@@ -25,7 +25,9 @@ public class CrimeBaseHelper extends SQLiteOpenHelper {
                 CrimeTable.Cols.DATE + ", " +
                 CrimeTable.Cols.SUSPECT + ", " +
                 CrimeTable.Cols.SOLVED + ", " +
-                CrimeTable.Cols.PHOTO_NUM +
+                CrimeTable.Cols.PHOTO_NUM + ", " +
+                CrimeTable.Cols.FACE_CHECKED + ", " +
+                CrimeTable.Cols.OCR_CHECKED +
                 ")"
         );
     }

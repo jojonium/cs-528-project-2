@@ -36,6 +36,8 @@ import android.widget.TextView;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
+import com.google.android.gms.vision.text.TextBlock;
+import com.google.android.gms.vision.text.TextRecognizer;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -57,11 +59,13 @@ public class CrimeFragment extends Fragment {
     private Button mDateButton;
     private CheckBox mSolvedCheckbox;
     private CheckBox mFaceCheckbox;
+    private CheckBox mOCRCheckbox;
     private Button mReportButton;
     private Button mSuspectButton;
     private ImageButton mPhotoButton;
 
     private FaceDetector mFaceDetector;
+    private TextRecognizer mTextRecognizer;
 
     //private File mPhotoFile;
     private int maxPhotoFiles = 4;
@@ -92,11 +96,16 @@ public class CrimeFragment extends Fragment {
                 .setTrackingEnabled(false)
                 .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                 .build();
-    }
+
+        mTextRecognizer = new TextRecognizer.Builder(getActivity().getApplicationContext()).build();
+
+        }
+
 
     @Override
     public void onDestroy() {
         this.mFaceDetector.release();
+        mTextRecognizer.release();
         super.onDestroy();
     }
 
@@ -169,6 +178,7 @@ public class CrimeFragment extends Fragment {
         });
 
         mFaceCheckbox = v.findViewById(R.id.face_detection_checkbox);
+        mFaceCheckbox.setChecked(mCrime.isFaceChecked());
         mFaceCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -185,6 +195,26 @@ public class CrimeFragment extends Fragment {
                     ((TextView) getView().findViewById(R.id.faces_detected)).setText("");
                 }
                 updatePhotoView(mCrime.getId());
+                mCrime.setFaceChecked(isChecked);
+            }
+        });
+
+        mOCRCheckbox = v.findViewById(R.id.ocr_checkbox);
+        if (!mTextRecognizer.isOperational()) {
+            mOCRCheckbox.setEnabled(false);
+            mCrime.setOcrChecked(false);
+        } else {
+            mOCRCheckbox.setChecked(mCrime.isOcrChecked());
+
+        }
+
+        mOCRCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
+                setDetectedText(isChecked, photoNum);
+                updatePhotoView(mCrime.getId());
+                mCrime.setOcrChecked(isChecked);
             }
         });
 
@@ -284,6 +314,8 @@ public class CrimeFragment extends Fragment {
                 String facesDetectedText = getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size());
                 ((TextView) this.getView().findViewById(R.id.faces_detected)).setText(facesDetectedText);
             }
+            setDetectedText(mOCRCheckbox.isChecked(), mCrime.getPhotoNum());
+
             mCrime.setPhotoNum((mCrime.getPhotoNum() + 1) % maxPhotoFiles);
             this.captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             captureImage.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -292,6 +324,22 @@ public class CrimeFragment extends Fragment {
             UUID uuid_fk = mCrime.getId();
             updatePhotoView(uuid_fk);
         }
+    }
+
+    private void setDetectedText(boolean isChecked, int photoNum){
+        if (isChecked) {
+            if (mPhotoFiles.get(photoNum) == null || !mPhotoFiles.get(photoNum).exists())
+                return;
+            Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(photoNum).getPath(), getActivity());
+            Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+            SparseArray<TextBlock> textBlock = mTextRecognizer.detect(frame);
+            if (textBlock.size() > 0) {
+                ((TextView) getView().findViewById(R.id.text_detected)).setText(textBlock.get(0).getValue());
+            }
+        } else {
+            ((TextView) getView().findViewById(R.id.text_detected)).setText("");
+        }
+
     }
 
     private void updateDate() {
@@ -319,6 +367,7 @@ public class CrimeFragment extends Fragment {
     }
 
     private void updatePhotoView(UUID uuid_fk) {
+        int photoNum = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
         for (int i = 0; i < maxPhotoFiles; ++i) {
             if (mPhotoFiles.get(i) == null || !mPhotoFiles.get(i).exists()) {
                 mPhotoViews.get(i).setImageDrawable(null);
@@ -346,6 +395,9 @@ public class CrimeFragment extends Fragment {
                 } else {
                     mPhotoViews.get(i).setImageBitmap(bitmap);
                 }
+//                if (i == photoNum) {
+//                    setDetectedText(mOCRCheckbox.isChecked(), photoNum);
+//                }
             }
         }
     }

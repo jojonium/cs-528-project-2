@@ -10,6 +10,25 @@ public class Crime {
     private Date mDate;
     private boolean mSolved;
     private String mSuspect;
+    private int photoNum;
+    private boolean ocrChecked;
+    private boolean faceChecked;
+
+    public boolean isOcrChecked() {
+        return ocrChecked;
+    }
+
+    public void setOcrChecked(boolean ocrChecked) {
+        this.ocrChecked = ocrChecked;
+    }
+
+    public boolean isFaceChecked() {
+        return faceChecked;
+    }
+
+    public void setFaceChecked(boolean faceChecked) {
+        this.faceChecked = faceChecked;
+    }
 
     public int getPhotoNum() {
         return photoNum;
@@ -18,8 +37,6 @@ public class Crime {
     public void setPhotoNum(int photoNum) {
         this.photoNum = photoNum;
     }
-
-    private int photoNum;
 
     public Crime() {
         this(UUID.randomUUID());

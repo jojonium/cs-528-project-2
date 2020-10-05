@@ -30,6 +30,7 @@
     <string name="photo_desc_4">Fourth crime photo</string>
 
     <string name="face_detection_checkbox">Enable Face Detection</string>
+    <string name="ocr_checkbox">Enable OCR</string>
 
     <plurals name="faces">
         <item quantity="one">%d Face Detected</item>

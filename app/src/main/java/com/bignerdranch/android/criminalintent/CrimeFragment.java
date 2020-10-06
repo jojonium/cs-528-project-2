@@ -64,6 +64,8 @@ public class CrimeFragment extends Fragment {
     private Button mSuspectButton;
     private ImageButton mPhotoButton;
 
+    private View v;
+
     private FaceDetector mFaceDetector;
     private TextRecognizer mTextRecognizer;
 
@@ -120,7 +122,7 @@ public class CrimeFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_crime, container, false);
+        v = inflater.inflate(R.layout.fragment_crime, container, false);
 
         mTitleField = (EditText) v.findViewById(R.id.crime_title);
         mTitleField.setText(mCrime.getTitle());
@@ -338,10 +340,10 @@ public class CrimeFragment extends Fragment {
             Frame frame = new Frame.Builder().setBitmap(bitmap).build();
             SparseArray<TextBlock> textBlock = mTextRecognizer.detect(frame);
             if (textBlock.size() > 0) {
-                ((TextView) getView().findViewById(R.id.text_detected)).setText(textBlock.get(0).getValue());
+                ((TextView) v.findViewById(R.id.text_detected)).setText(textBlock.get(0).getValue());
             }
         } else {
-            ((TextView) getView().findViewById(R.id.text_detected)).setText("");
+            ((TextView) v.findViewById(R.id.text_detected)).setText("");
         }
 
     }

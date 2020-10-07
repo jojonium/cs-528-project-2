@@ -209,9 +209,18 @@ public class CrimeFragment extends Fragment {
             mOCRCheckbox.setChecked(mCrime.isOcrChecked());
         }
 
+        // Update text fields
         int lastPhoto = (mCrime.getPhotoNum() + (maxPhotoFiles - 1)) % maxPhotoFiles;
         if (mPhotoFiles.get(lastPhoto) != null && mPhotoFiles.get(lastPhoto).exists()) {
             setDetectedText(mOCRCheckbox.isChecked(), lastPhoto);
+
+            if (mFaceCheckbox.isChecked()) {
+                Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFiles.get(lastPhoto).getPath(), getActivity());
+                Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+                SparseArray<Face> faces = mFaceDetector.detect(frame);
+                String facesDetectedText = getResources().getQuantityString(R.plurals.faces, faces.size(), faces.size());
+                ((TextView) v.findViewById(R.id.faces_detected)).setText(facesDetectedText);
+            }
         }
 
         mOCRCheckbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
